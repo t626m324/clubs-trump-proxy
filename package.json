@@ -1,6 +1,0 @@
-{
-  "name": "clubs-trump-proxy",
-  "version": "1.0.0",
-  "description": "Serverless proxy for Clubs Trump scorekeeper to call Anthropic API",
-  "type": "module"
-}
