@@ -1,34 +1,42 @@
-export default async function handler(req, res) {
-  // Set CORS headers for all requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400');
+export const config = {
+  runtime: 'edge',
+};
 
-  // Handle preflight OPTIONS request
+export default async function handler(req) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
-  // Only allow POST for actual requests
+  // Only allow POST
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   try {
-    // Get the prompt from the request body
-    const { prompt } = req.body;
+    const body = await req.json();
+    const { prompt } = body;
 
     if (!prompt) {
-      res.status(400).json({ error: 'Prompt is required' });
-      return;
+      return new Response(JSON.stringify({ error: 'Prompt is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log('Calling Anthropic API...');
-
-    // Call Anthropic API with your API key from environment variable
+    // Call Anthropic API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -48,20 +56,23 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Anthropic API error:', errorText);
-      res.status(response.status).json({ error: errorText });
-      return;
+      return new Response(JSON.stringify({ error: errorText }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const data = await response.json();
     
-    // Return the poem
-    res.status(200).json({
-      poem: data.content[0].text
+    return new Response(JSON.stringify({ poem: data.content[0].text }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Internal server error: ' + error.message });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 }
